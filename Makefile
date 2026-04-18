@@ -4,8 +4,25 @@ PHP=$(COMPOSE) exec php
 CONSOLE=$(PHP) bin/console
 COMPOSER=$(PHP) composer
 
-up:
-	@${COMPOSE} ${ENV_FILES} up -d
+help:
+	@echo "up-prod		запуск контейнеров (production-ready)"
+	@echo "up-dev		запуск контейнеров (development)"
+	@echo "up-test		запуск контейнеров (test)"
+	@echo "down			остановка контейнеров"
+	@echo "clear		очистка кэша"
+	@echo "migration	создание миграций"
+	@echo "migrate		применение миграций"
+	@echo "fixtload		загрузка фикстур"
+
+
+up-prod:
+	@APP_ENV="prod" ${COMPOSE} ${ENV_FILES} up -d
+
+up-dev:
+	@APP_ENV="dev" ${COMPOSE} ${ENV_FILES} --profile dev up -d
+
+up-test:
+	@APP_ENV="test" ${COMPOSE} ${ENV_FILES} --profile "test" up -d
 
 down:
 	@${COMPOSE} down

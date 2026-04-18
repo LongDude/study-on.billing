@@ -1,6 +1,5 @@
 version: "3.1"
-volumes:
-  postgres: ~
+
 services:
   nginx:
     image: nginx:1.29-alpine
@@ -13,12 +12,13 @@ services:
       - "${NGINX_PORT}:80"
     links:
       - php
+
   postgres:
     ports:  #Нельзя использовать проброс портов на реальном проекте
       - "127.0.0.1:5433:5432"
     image: postgres:18.3-alpine
     volumes:
-      - postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/18/docker
     environment:
         POSTGRES_DB: ${POSTGRES_DB}
         POSTGRES_USER: ${POSTGRES_USER}
@@ -28,6 +28,7 @@ services:
         interval: 30s
         timeout: 60s
         retries: 5
+
   php:
     build: docker/images/php
     working_dir: /app
@@ -37,8 +38,12 @@ services:
       - ${HOME}/.composer:/.composer
     environment:
       - COMPOSER_ALLOW_SUPERUSER=1
+      - APP_ENV=${APP_ENV}
     env_file:
       - .env
       - .env.local
     links:
       - postgres
+
+volumes:
+    postgres_data:
