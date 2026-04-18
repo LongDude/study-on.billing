@@ -3,7 +3,9 @@
 namespace App\Controller\Api\v1;
 
 use App\Entity\User;
+use http\Env\Response;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -16,9 +18,48 @@ final class UsersController extends AbstractController
 {
 
     #[Route('/users/current', name: 'api_current_user', methods: ['GET'])]
+    #[OA\Get(
+        path: "/api/v1/users/current",
+        description: "Get current user",
+        summary: "Return user info, using Bearer JWT token",
+        security: [["Bearer" => []]],
+        tags: ["Auth"],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "OK",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: "username",
+                            description: "User email",
+                            type: "string",
+                            example: "user@mail.index"
+                        ),
+                        new OA\Property(
+                            property: "roles",
+                            description: "User roles",
+                            type: "array",
+                            items: new OA\Items(type: "string"),
+                            example: ["ROLE_USER", "ROLE_ADMIN"]
+                        ),
+                        new OA\Property(
+                            property: "balance",
+                            description: "User balance",
+                            type: "float",
+                            example: "92.1"
+                        ),
+                    ],
+                    type: "object",
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: "Unathorized",
+            )
+        ],
+    )]
     public function getCurrentUser(
-        TokenStorageInterface $tokenStorage,
-        JWTTokenManagerInterface $jwtManager,
         #[CurrentUser] User $user
     ): JsonResponse
     {

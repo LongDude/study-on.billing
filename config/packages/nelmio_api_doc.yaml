@@ -1,4 +1,5 @@
 nelmio_api_doc:
+    use_validation_groups: false
     documentation:
         info:
             title: Study-on.billing
@@ -11,8 +12,9 @@ nelmio_api_doc:
             /api/v1/auth:
                 post:
                     operationId: postCredentialsItem
+                    security: []
                     tags:
-                        - Token
+                        - Auth
                     summary: Get JWT authorization token for user credentials
                     requestBody:
                         description: Create JWT token
@@ -32,12 +34,17 @@ nelmio_api_doc:
             schemas:
                 Token:
                     type: object
+                    description: "JWT Token"
                     properties:
                         token:
                             type: string
                             readOnly: true
                 Credentials:
                     type: object
+                    description: "User auth credentials"
+                    required:
+                        - username
+                        - password
                     properties:
                         username:
                             type: string
@@ -48,11 +55,16 @@ nelmio_api_doc:
             securitySchemes:
                 Bearer:
                     type: http
+                    description: "Enter JWT Bearer token"
                     scheme: bearer
                     bearerFormat: JWT
 
+    media_types:
+        - json
 
     areas:
         path_patterns:
             - ^/api(?!/doc$)
+
+    models:
 
