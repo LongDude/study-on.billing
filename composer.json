@@ -7,7 +7,10 @@
         "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "jms/serializer-bundle": "^5.5",
         "lexik/jwt-authentication-bundle": "^3.2",
+        "nelmio/api-doc-bundle": "^5.10",
+        "symfony/asset": "8.0.*",
         "symfony/console": "8.0.*",
         "symfony/dotenv": "8.0.*",
         "symfony/flex": "^2",
@@ -15,7 +18,12 @@
         "symfony/phpunit-bridge": "^8.0",
         "symfony/runtime": "8.0.*",
         "symfony/security-bundle": "8.0.*",
-        "symfony/yaml": "8.0.*"
+        "symfony/twig-bundle": "8.0.*",
+        "symfony/validator": "8.0.*",
+        "symfony/yaml": "8.0.*",
+        "twig/extra-bundle": "^2.12|^3.0",
+        "twig/twig": "^2.12|^3.0",
+        "zircote/swagger-php": "^6.1"
     },
     "config": {
         "allow-plugins": {
