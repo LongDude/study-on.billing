@@ -3,6 +3,7 @@ version: "3.1"
 services:
   nginx:
     image: nginx:1.29-alpine
+    container_name: billing.study-on.local
     working_dir: /app
     volumes:
       - ${PWD}:/app
@@ -14,8 +15,6 @@ services:
       - php
 
   postgres:
-    ports:  #Нельзя использовать проброс портов на реальном проекте
-      - "127.0.0.1:5433:5432"
     image: postgres:18.3-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/18/docker
@@ -47,3 +46,6 @@ services:
 
 volumes:
     postgres_data:
+
+networks:
+    default:
