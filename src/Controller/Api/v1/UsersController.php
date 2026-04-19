@@ -47,7 +47,7 @@ final class UsersController extends AbstractController
                             property: "balance",
                             description: "User balance",
                             type: "float",
-                            example: "92.1"
+                            example: "17.2"
                         ),
                     ],
                     type: "object",

@@ -21,9 +21,6 @@ up-prod:
 up-dev:
 	@APP_ENV="dev" ${COMPOSE} ${ENV_FILES} --profile dev up -d
 
-up-test:
-	@APP_ENV="test" ${COMPOSE} ${ENV_FILES} --profile "test" up -d
-
 down:
 	@${COMPOSE} down
 

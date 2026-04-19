@@ -56,8 +56,30 @@ final class SecurityController extends AbstractController
                         new OA\Property(
                             property: "errors",
                             description: "Error message",
-                            type: "string",
-                            example: "Email should not be blank",
+                            properties: [
+                                new OA\Property(
+                                    property: "email",
+                                    type: "array",
+                                    items: new OA\Items(type: "string"),
+                                    example: [
+                                        "The email address should be at most 255 characters long",
+                                        "Invalid email address",
+                                        "User with given email already exists",
+                                        "Email should not be blank",
+                                        ],
+                                ),
+                                new OA\Property(
+                                    property: "password",
+                                    type: "array",
+                                    items: new OA\Items(type: "string"),
+                                    example: [
+                                        "Password should not be blank",
+                                        "Password should be at least {{ limit }} characters long.",
+                                        "Password should be at most {{ limit }} characters long."
+                                    ]
+                                ),
+                            ],
+                            type: "object",
                         )
                     ],
                     type: "object"
@@ -95,7 +117,11 @@ final class SecurityController extends AbstractController
 
         // Check validation
         if ($errors->count() > 0) {
-            return $this->json(["errors" => (string) $errors], Response::HTTP_BAD_REQUEST);
+            $errs = array();
+            foreach ($errors as $constraint) {
+                $errs[$constraint->getPropertyPath()][] = $constraint->getMessage();
+            }
+            return $this->json(["errors" => $errs], Response::HTTP_BAD_REQUEST);
         }
 
         $user = new User();
@@ -108,7 +134,7 @@ final class SecurityController extends AbstractController
             $entityManager->persist($user);
             $entityManager->flush();
         } catch (UniqueConstraintViolationException $e) {
-            return $this->json(["errors" => 'User with given email already exists'], Response::HTTP_BAD_REQUEST);
+            return $this->json(["errors" => ["email" => 'User with given email already exists']], Response::HTTP_BAD_REQUEST);
         } catch (ORMException $e) {
             if ("dev" === $this->container->get('kernel')->getEnvironment()) {
                 return $this->json(["errors" => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
