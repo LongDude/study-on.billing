@@ -3,14 +3,10 @@
 namespace App\Controller\Api\v1;
 
 use App\Entity\User;
-use http\Env\Response;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Security\Csrf\TokenStorage\TokenStorageInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route("/api/v1")]
@@ -55,7 +51,7 @@ final class UsersController extends AbstractController
             ),
             new OA\Response(
                 response: 401,
-                description: "Unathorized",
+                description: "Unauthorized",
             )
         ],
     )]
@@ -69,6 +65,6 @@ final class UsersController extends AbstractController
             'username' => $user->getUserIdentifier(),
             'roles' => $user->getRoles(),
             'balance' => $user->getBalance(),
-        ], 200);
+        ]);
     }
 }
