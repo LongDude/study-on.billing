@@ -127,6 +127,7 @@ final class SecurityController extends AbstractController
         $user = new User();
         $user->setEmail($userDto->email);
         $user->setPassword($passwordHasher->hashPassword($user, $userDto->password));
+        $user->setBalance(0);
         $user->setRoles(['ROLE_USER']);
 
         // Check for constraint violation / database errors
