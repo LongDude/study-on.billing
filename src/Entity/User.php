@@ -31,7 +31,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private array $roles = [];
 
     /**
-     * @var string The hashed password
+     * @var ?string The hashed password
      */
     #[ORM\Column]
     #[Assert\NotNull]
@@ -40,12 +40,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $password = null;
 
     /**
-     * @var float User balance
+     * @var ?float User balance
      */
-    #[ORM\Column]
+    #[ORM\Column(options: ['default' => 0])]
     #[Assert\NotNull]
     #[Assert\Positive]
-    private float $balance = 0.0;
+    private ?float $balance = null;
 
     public function getId(): ?int
     {
@@ -65,8 +65,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * A visual identifier that represents this user.
-     *
      * @see UserInterface
      */
     public function getUserIdentifier(): string
@@ -76,6 +74,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     /**
      * @see UserInterface
+     * @return list<string> Roles list
      */
     public function getRoles(): array
     {
@@ -98,12 +97,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     /**
      * @see PasswordAuthenticatedUserInterface
+     * @return ?string password
      */
     public function getPassword(): ?string
     {
         return $this->password;
     }
 
+    /**
+     * @param string $password
+     * @return $this
+     */
     public function setPassword(string $password): static
     {
         $this->password = $password;
@@ -112,13 +116,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * @param float $balance
+     * @return ?float balance
      */
-    public function getBalance(): float
+    public function getBalance(): ?float
     {
         return $this->balance;
     }
 
+    /**
+     * @param float $balance
+     * @return $this
+     */
     public function setBalance(float $balance): static
     {
         $this->balance = $balance;
