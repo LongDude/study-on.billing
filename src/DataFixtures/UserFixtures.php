@@ -31,7 +31,7 @@ class UserFixtures extends Fixture
         $plain_password = "user_admin_password";
         $hashed_password = $this->passwordHasher->hashPassword($user_user, $plain_password);
         $user_admin->setEmail("admin@email.index");
-        $user_admin->setRoles(["ROLE_ADMIN"]);
+        $user_admin->setRoles(["ROLE_SUPER_ADMIN"]);
         $user_admin->setPassword($hashed_password);
         $user_admin->setBalance(42.3);
         $manager->persist($user_admin);
