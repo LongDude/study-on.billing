@@ -57,8 +57,7 @@ final class UsersController extends AbstractController
     )]
     public function getCurrentUser(
         #[CurrentUser] User $user
-    ): JsonResponse
-    {
+    ): JsonResponse {
         // /api/v1 защищенный маршрут для авторизированных пользователей
         // полагаем что проверка на существование пользователя уже провелась в JWT Auth
         return $this->json([

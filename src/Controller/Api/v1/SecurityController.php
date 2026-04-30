@@ -8,6 +8,8 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 
+use Gesdinet\JWTRefreshTokenBundle\Generator\RefreshTokenGeneratorInterface;
+use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
 use JMS\Serializer\SerializerBuilder;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Nelmio\ApiDocBundle\Attribute\Model;
@@ -109,8 +111,9 @@ final class SecurityController extends AbstractController
         UserPasswordHasherInterface $passwordHasher,
         EntityManagerInterface $entityManager,
         JWTTokenManagerInterface $JWTTokenManager,
-    ): JsonResponse
-    {
+        RefreshTokenGeneratorInterface $refreshTokenGenerator,
+        RefreshTokenManagerInterface $refreshTokenManager
+    ): JsonResponse {
         $serializer = SerializerBuilder::create()->build();
         $userDto = $serializer->deserialize($request->getContent(), RegisterUserDto::class, 'json');
         $errors = $validator->validate($userDto);
@@ -135,7 +138,14 @@ final class SecurityController extends AbstractController
             $entityManager->persist($user);
             $entityManager->flush();
         } catch (UniqueConstraintViolationException $e) {
-            return $this->json(["errors" => ["email" => 'User with given email already exists']], Response::HTTP_BAD_REQUEST);
+            return $this->json(
+                [
+                    "errors" => [
+                        "email" => 'User with given email already exists'
+                    ]
+                ],
+                Response::HTTP_BAD_REQUEST
+            );
         } catch (ORMException $e) {
             if ("dev" === $this->container->get('kernel')->getEnvironment()) {
                 return $this->json(["errors" => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -143,9 +153,16 @@ final class SecurityController extends AbstractController
             return $this->json(["errors" => "Server error"], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
+        $refreshToken = $refreshTokenGenerator->createForUserWithTtl(
+            $user,
+            $this->getParameter('refresh_token_ttl'),
+        );
+        $refreshTokenManager->save($refreshToken);
+
         // Return response
         return $this->json([
             'token' => $JWTTokenManager->create($user),
+            'refreshToken' => $refreshToken,
         ], Response::HTTP_CREATED);
     }
 }

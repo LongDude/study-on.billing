@@ -13,6 +13,10 @@ controllers:
 api_auth_check:
     path: /api/v1/auth
 
+api_refresh_token:
+    path: /api/v1/token/refresh
+    methods: POST
+    controller: gesdinet.jwtrefreshtoken::refresh
 
 when@dev:
     app.swagger_ui:
