@@ -7,7 +7,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    refresh_token_ttl: '%env(JWT_REFRESH_TTL)%'
+    # 24*3600*30 - 30 days
+    app.refresh_token_ttl: 2592000
 
 services:
     # default configuration for services in *this* file

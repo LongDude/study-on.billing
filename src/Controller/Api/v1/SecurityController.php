@@ -4,6 +4,8 @@ namespace App\Controller\Api\v1;
 
 use App\DTO\RegisterUserDto;
 use App\Entity\User;
+use App\Service\PaymentService;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
@@ -112,7 +114,8 @@ final class SecurityController extends AbstractController
         EntityManagerInterface $entityManager,
         JWTTokenManagerInterface $JWTTokenManager,
         RefreshTokenGeneratorInterface $refreshTokenGenerator,
-        RefreshTokenManagerInterface $refreshTokenManager
+        RefreshTokenManagerInterface $refreshTokenManager,
+        PaymentService $paymentService,
     ): JsonResponse {
         $serializer = SerializerBuilder::create()->build();
         $userDto = $serializer->deserialize($request->getContent(), RegisterUserDto::class, 'json');
@@ -136,6 +139,7 @@ final class SecurityController extends AbstractController
         // Check for constraint violation / database errors
         try {
             $entityManager->persist($user);
+            $paymentService->deposit($user, $this->getParameter("app.welcome_deposit"));
             $entityManager->flush();
         } catch (UniqueConstraintViolationException $e) {
             return $this->json(
@@ -155,7 +159,7 @@ final class SecurityController extends AbstractController
 
         $refreshToken = $refreshTokenGenerator->createForUserWithTtl(
             $user,
-            $this->getParameter('refresh_token_ttl'),
+            $this->getParameter('app.refresh_token_ttl'),
         );
         $refreshTokenManager->save($refreshToken);
 
