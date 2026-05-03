@@ -46,7 +46,12 @@ class Course
     #[ORM\Column(
         options: ['default' => 0]
     )]
-    #[Assert\GreaterThanOrEqual(0)]
+    #[Assert\AtLeastOneOf(
+        [
+            new Assert\GreaterThanOrEqual(0),
+            new Assert\IsNull()
+        ]
+    )]
     private ?float $price = null;
 
     /**

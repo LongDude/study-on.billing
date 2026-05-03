@@ -16,24 +16,34 @@ class UserFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        // Default user
-        $user_user = new User();
+        // User 1
+        $user1 = new User();
         $plain_password = "user_plain_password";
-        $hashed_password = $this->passwordHasher->hashPassword($user_user, $plain_password);
-        $user_user->setEmail("user@email.index");
-        $user_user->setRoles(["ROLE_USER"]);
-        $user_user->setPassword($hashed_password);
-        $user_user->setBalance(17.2);
-        $manager->persist($user_user);
+        $hashed_password = $this->passwordHasher->hashPassword($user1, $plain_password);
+        $user1->setEmail("user@email.index");
+        $user1->setRoles(["ROLE_USER"]);
+        $user1->setPassword($hashed_password);
+        $user1->setBalance(3000);
+        $manager->persist($user1);
+
+        // User 2
+        $user2 = new User();
+        $plain_password = "user2_plain_password";
+        $hashed_password = $this->passwordHasher->hashPassword($user2, $plain_password);
+        $user2->setEmail("user2@email.index");
+        $user2->setRoles(["ROLE_USER"]);
+        $user2->setPassword($hashed_password);
+        $user2->setBalance(2500);
+        $manager->persist($user2);
 
         // Admin
         $user_admin = new User();
         $plain_password = "user_admin_password";
-        $hashed_password = $this->passwordHasher->hashPassword($user_user, $plain_password);
+        $hashed_password = $this->passwordHasher->hashPassword($user_admin, $plain_password);
         $user_admin->setEmail("admin@email.index");
         $user_admin->setRoles(["ROLE_SUPER_ADMIN"]);
         $user_admin->setPassword($hashed_password);
-        $user_admin->setBalance(42.3);
+        $user_admin->setBalance(90000);
         $manager->persist($user_admin);
 
         $manager->flush();

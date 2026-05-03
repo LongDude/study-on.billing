@@ -39,7 +39,7 @@ class Transaction
     private ?int $operationType = null;
 
     #[ORM\Column(
-        options: ['default' => 0]
+        options: ['default' => 0],
     )]
     #[Assert\Positive]
     private ?float $value = null;
@@ -50,7 +50,7 @@ class Transaction
     private ?\DateTime $transactionTime = null;
 
     #[ORM\Column(
-        options: ['default' => '(CURRENT_TIMESTAMP + INTERVAL \'30 days\')::timestamp']
+        nullable: true,
     )]
     private ?\DateTime $validUntil = null;
 
