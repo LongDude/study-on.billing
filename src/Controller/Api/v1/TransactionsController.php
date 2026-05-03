@@ -3,6 +3,7 @@
 namespace App\Controller\Api\v1;
 
 use App\Entity\Transaction;
+use App\Entity\User;
 use App\Repository\TransactionRepository;
 use App\Service\PaymentService;
 use Doctrine\DBAL\Exception;
@@ -22,13 +23,14 @@ final class TransactionsController extends AbstractController
     #[IsGranted("ROLE_USER")]
     #[Route('', name: 'api_v1_transactions', methods: ['GET'])]
     public function listTransactions(
+        #[CurrentUser] User $user,
         #[MapQueryParameter("type")] ?string $type,
         #[MapQueryParameter("course_code")] ?string $courseCode,
         #[MapQueryParameter("skip_expired")] ?bool $skipExpired,
         TransactionRepository $transactionRepository,
     ): JsonResponse
     {
-        $transactions = $transactionRepository->listFiltered($type, $courseCode, $skipExpired);
+        $transactions = $transactionRepository->listFiltered($user, $type, $courseCode, $skipExpired);
         return $this->json(array_map(static function($transaction) {
             $transaction["type"] = match ($transaction["type"]) {0 => "payment", 1 => "deposit"};
             $transaction["created_at"] = $transaction["created_at"]->format('c');

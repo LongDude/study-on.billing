@@ -139,7 +139,7 @@ final class SecurityController extends AbstractController
         // Check for constraint violation / database errors
         try {
             $entityManager->persist($user);
-            $paymentService->deposit($user, $this->getParameter("app.welcome_deposit"));
+            $paymentService->deposit($user, (float) $this->getParameter("app.initial_payment"));
             $entityManager->flush();
         } catch (UniqueConstraintViolationException $e) {
             return $this->json(

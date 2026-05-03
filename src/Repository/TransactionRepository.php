@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Transaction;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,7 +17,7 @@ class TransactionRepository extends ServiceEntityRepository
         parent::__construct($registry, Transaction::class);
     }
 
-    public function listFiltered(?string $type, ?string $courseCode, ?bool $skipExpired): array
+    public function listFiltered(?User $user, ?string $type, ?string $courseCode, ?bool $skipExpired): array
     {
         $transactionQuery = $this->createQueryBuilder('t')
             ->select(
@@ -26,6 +27,10 @@ class TransactionRepository extends ServiceEntityRepository
                 'c.symbolic_name as course_code',
                 't.value as amount'
             );
+
+        if ($user){
+            $transactionQuery->andWhere('t.BillingUser = :user')->setParameter('user', $user);
+        }
 
         $typeNormalized = match($type) {
             "payment" => 0,

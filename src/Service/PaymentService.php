@@ -10,6 +10,9 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\Container;
+use Symfony\Component\DependencyInjection\Parameter;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use \ValueError as ValueError;
@@ -19,14 +22,11 @@ class PaymentService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private Security $security,
+
+        #[Autowire('app.rent_length')]
+        private readonly string $rent_length,
     )
     {
-    }
-
-    private function getCurrentUser(): ?User {
-        $user = $this->security->getUser();
-        return $user instanceof User ? $user : null;
     }
 
     /**
@@ -77,7 +77,7 @@ class PaymentService
             $transaction->setOperationType(0);
             $transaction->settransactionTime(new \DateTime());
             if ($course->getCourseType() === 1) {
-                $transaction->setValidUntil(new \DateTime()->modify('+30 days'));
+                $transaction->setValidUntil(new \DateTime()->modify('+'. $this->rent_length .' days'));
             }
             $transaction->setValue($course->getPrice());
 

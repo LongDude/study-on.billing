@@ -7,13 +7,17 @@ use App\Entity\User;
 use App\Service\PaymentService;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class UserFixtures extends Fixture
 {
     public function __construct(
         private readonly UserPasswordHasherInterface $passwordHasher,
-        private readonly PaymentService $paymentService
+        private readonly PaymentService $paymentService,
+
+        #[Autowire('app.initial_payment')]
+        private readonly string $initial_payment,
     ){
     }
 
@@ -28,6 +32,7 @@ class UserFixtures extends Fixture
         $user1->setPassword($hashed_password);
         $user1->setBalance(0);
         $manager->persist($user1);
+        $this->paymentService->deposit($user1, $this->initial_payment);
 
         // User 2
         $user2 = new User();
@@ -38,6 +43,7 @@ class UserFixtures extends Fixture
         $user2->setPassword($hashed_password);
         $user2->setBalance(0);
         $manager->persist($user2);
+        $this->paymentService->deposit($user2, $this->initial_payment);
 
         // Admin
         $user_admin = new User();
@@ -48,13 +54,7 @@ class UserFixtures extends Fixture
         $user_admin->setPassword($hashed_password);
         $user_admin->setBalance(0);
         $manager->persist($user_admin);
-
-        // Initial deposits
-        $timeNow = new \DateTime();
-        $deposits = [[$user1, 1000], [$user1, 1200], [$user2, 700], [$user2, 850]];
-        foreach ($deposits as $depositData) {
-            $this->paymentService->deposit($depositData[0], $depositData[1]);
-        }
+        $this->paymentService->deposit($user_admin, $this->initial_payment);
 
         $manager->flush();
     }

@@ -9,6 +9,8 @@
 parameters:
     # 24*3600*30 - 30 days
     app.refresh_token_ttl: 2592000
+    app.initial_payment: 3000
+    app.rent_length: 30 # days
 
 services:
     # default configuration for services in *this* file
