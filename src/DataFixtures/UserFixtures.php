@@ -16,7 +16,7 @@ class UserFixtures extends Fixture
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly PaymentService $paymentService,
 
-        #[Autowire('app.initial_payment')]
+        #[Autowire(param: 'app.initial_payment')]
         private readonly string $initial_payment,
     ){
     }
@@ -32,7 +32,7 @@ class UserFixtures extends Fixture
         $user1->setPassword($hashed_password);
         $user1->setBalance(0);
         $manager->persist($user1);
-        $this->paymentService->deposit($user1, $this->initial_payment);
+        $this->paymentService->deposit($user1, (float)$this->initial_payment);
 
         // User 2
         $user2 = new User();
@@ -43,7 +43,7 @@ class UserFixtures extends Fixture
         $user2->setPassword($hashed_password);
         $user2->setBalance(0);
         $manager->persist($user2);
-        $this->paymentService->deposit($user2, $this->initial_payment);
+        $this->paymentService->deposit($user2, (float)$this->initial_payment);
 
         // Admin
         $user_admin = new User();
@@ -54,7 +54,7 @@ class UserFixtures extends Fixture
         $user_admin->setPassword($hashed_password);
         $user_admin->setBalance(0);
         $manager->persist($user_admin);
-        $this->paymentService->deposit($user_admin, $this->initial_payment);
+        $this->paymentService->deposit($user_admin, (float)$this->initial_payment);
 
         $manager->flush();
     }

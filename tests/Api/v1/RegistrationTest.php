@@ -11,11 +11,13 @@ class RegistrationTest extends WebTestCase
     private ?JWTTokenManagerInterface $JwtManager;
 
     private ?KernelBrowser $client;
+    private float $startingDeposit;
 
     public function setUp(): void {
         parent::setUp();
         $this->client = static::createClient();
         $this->JwtManager = $this->client->getContainer()->get('lexik_jwt_authentication.jwt_manager');
+        $this->startingDeposit = (float) $this->client->getContainer()->getParameter('app.initial_payment');
     }
 
     protected function authorizeClient(string $username = "user@email.index", string $password = "user_plain_password"): void{
@@ -66,6 +68,7 @@ class RegistrationTest extends WebTestCase
         $data = json_decode($this->client->getResponse()->getContent(), True);
         self::assertArrayHasKey("username", $data);
         self::assertSame("newuser@email.inbox", $data["username"]);
+        self::assertEqualsWithDelta($this->startingDeposit, $data["balance"], 1e-9);
     }
 
     public function testEmailFormatConstraint(): void{

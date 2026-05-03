@@ -104,8 +104,6 @@ class AuthorizationTest extends WebTestCase
         }
         self::assertArrayHasKey("username", $data);
         self::assertSame("user@email.index", $data["username"]);
-
-        self::assertEquals("17.2", $data['balance']);
     }
 
     public function testUnauthorizedUserLogin(): void {

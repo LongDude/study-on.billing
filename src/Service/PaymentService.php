@@ -23,7 +23,7 @@ class PaymentService
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
 
-        #[Autowire('app.rent_length')]
+        #[Autowire(param: 'app.rent_length')]
         private readonly string $rent_length,
     )
     {
