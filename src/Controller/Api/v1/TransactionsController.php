@@ -3,6 +3,7 @@
 namespace App\Controller\Api\v1;
 
 use App\Entity\Transaction;
+use App\Repository\TransactionRepository;
 use App\Service\PaymentService;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,39 +25,11 @@ final class TransactionsController extends AbstractController
         #[MapQueryParameter("type")] ?string $type,
         #[MapQueryParameter("course_code")] ?string $courseCode,
         #[MapQueryParameter("skip_expired")] ?bool $skipExpired,
-        EntityManagerInterface $entityManager
+        TransactionRepository $transactionRepository,
     ): JsonResponse
     {
-        $transactionRepository = $entityManager->getRepository(Transaction::class);
-        $transactionQuery = $transactionRepository->createQueryBuilder('t')
-        ->select(
-            't.id as id',
-            't.transactionTime as created_at',
-            't.operationType as type',
-            'c.symbolic_name as course_code',
-            't.value as amount'
-        );
-
-        $typeNormalized = match($type) {
-            "payment" => 0,
-            "deposit" => 1,
-            default => null
-        };
-
-        if (null !== $type) {
-            $transactionQuery->andWhere('t.operationType = :type')->setParameter('type', $typeNormalized);
-        }
-        $transactionQuery->leftJoin('t.Course', 'c');
-
-        if (null !== $courseCode) {
-            $transactionQuery->andWhere('c.symbolic_name = :courseCode')->setParameter('courseCode', $courseCode);
-        }
-        if ($skipExpired) {
-            $transactionQuery->andWhere('t.validUntil is null or t.validUntil > :timenow')->setParameter('timenow', new \DateTime());
-        }
-
-        $transactions = $transactionQuery->getQuery()->getResult();
-        return $this->json(array_map(function($transaction) {
+        $transactions = $transactionRepository->listFiltered($type, $courseCode, $skipExpired);
+        return $this->json(array_map(static function($transaction) {
             $transaction["type"] = match ($transaction["type"]) {0 => "payment", 1 => "deposit"};
             $transaction["created_at"] = $transaction["created_at"]->format('c');
             if ("deposit" === $transaction["type"]){
