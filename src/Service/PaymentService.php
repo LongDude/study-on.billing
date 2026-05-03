@@ -47,6 +47,7 @@ class PaymentService
             $transaction = new Transaction();
             $transaction->setBillingUser($user);
             $transaction->setOperationType(1);
+            $transaction->settransactionTime(new \DateTime());
             $transaction->setValue($sum);
             $this->entityManager->persist($transaction);
 
@@ -74,6 +75,10 @@ class PaymentService
             $transaction->setBillingUser($user);
             $transaction->setCourse($course);
             $transaction->setOperationType(0);
+            $transaction->settransactionTime(new \DateTime());
+            if ($course->getCourseType() === 1) {
+                $transaction->setValidUntil(new \DateTime()->modify('+30 days'));
+            }
             $transaction->setValue($course->getPrice());
 
             $user->setBalance($user->getBalance() - $course->getPrice());

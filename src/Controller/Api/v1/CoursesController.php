@@ -8,6 +8,7 @@ use App\Service\PaymentService;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Compiler\ResolveNamedArgumentsPass;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -73,15 +74,18 @@ final class CoursesController extends AbstractController
                     status: Response::HTTP_NOT_ACCEPTABLE,
                 );
             }
-            return $this->json([
+            $paymentResponse = [
                 "success" => true,
-                "course_type" => match($course->getPrice()) {
+                "course_type" => match($course->getCourseType()) {
                     0 => "free",
                     1 => "rent",
                     2 => "buy",
                 },
-                "expires_at" => date_format($trans->getValidUntil(), "Y-m-d H:i:s"),
-            ]);
+            ];
+            if ($trans->getValidUntil()){
+                $paymentResponse["expires_at"] = date_format($trans->getValidUntil(), "c");
+            }
+            return $this->json($paymentResponse);
         } catch (Exception $exception) {
             return $this->json(
                 [
@@ -90,29 +94,5 @@ final class CoursesController extends AbstractController
                 status: Response::HTTP_INTERNAL_SERVER_ERROR,
             );
         }
-    }
-
-    #[Route('/deposit', name: 'api_v1_deposit', methods: ['POST'])]
-    #[IsGranted("ROLE_USER")]
-    public function deposit(
-        #[CurrentUser] $user,
-        Request $request,
-        PaymentService $paymentService,
-    ): JsonResponse {
-        try {
-            $data = json_decode($request->getContent(), true);
-            if (!isset($data["deposit"]) || $data["deposit"] <= 0) {
-                return new JsonResponse($this->json(["error" => "Неверная сумма пополнения"]), Response::HTTP_BAD_REQUEST);
-            }
-        } catch (Exception $exception) {
-            return new JsonResponse("",Response::HTTP_BAD_REQUEST);
-        }
-
-        try {
-            $paymentService->deposit($user, (float) $data["deposit"]);
-        } catch (Exception $exception) {
-            return new JsonResponse($this->json(["error" => "Сервис временно недоступен"]),Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-
     }
 }

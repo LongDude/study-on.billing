@@ -3,11 +3,16 @@
 namespace App\Controller\Api\v1;
 
 use App\Entity\Transaction;
+use App\Service\PaymentService;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapQueryParameter;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/v1/transactions')]
@@ -23,7 +28,14 @@ final class TransactionsController extends AbstractController
     ): JsonResponse
     {
         $transactionRepository = $entityManager->getRepository(Transaction::class);
-        $transactionQuery = $transactionRepository->createQueryBuilder('t');
+        $transactionQuery = $transactionRepository->createQueryBuilder('t')
+        ->select(
+            't.id as id',
+            't.transactionTime as created_at',
+            't.operationType as type',
+            'c.symbolic_name as course_code',
+            't.value as amount'
+        );
 
         $typeNormalized = match($type) {
             "payment" => 0,
@@ -34,26 +46,47 @@ final class TransactionsController extends AbstractController
         if (null !== $type) {
             $transactionQuery->andWhere('t.operationType = :type')->setParameter('type', $typeNormalized);
         }
-        $transactionQuery->innerJoin('t.course', 'c');
+        $transactionQuery->leftJoin('t.Course', 'c');
 
         if (null !== $courseCode) {
             $transactionQuery->andWhere('c.symbolic_name = :courseCode')->setParameter('courseCode', $courseCode);
         }
         if ($skipExpired) {
-            $transactionQuery->andWhere('t.valid_until > CURRENT_TIMESTAMP');
+            $transactionQuery->andWhere('t.validUntil is null or t.validUntil > :timenow')->setParameter('timenow', new \DateTime());
         }
 
         $transactions = $transactionQuery->getQuery()->getResult();
         return $this->json(array_map(function($transaction) {
-            $normalized = [];
-            $normalized["id"] = $transaction['t.id'];
-            $normalized["created_at"] = $transaction["t.transaction_time"];
-            $normalized["type"] = match ($transaction["t.operation_type"]) {0 => "payment", 1 => "deposit"};
-            if (0 === $transaction["t.operation_type"]){
-                $normalized["course_code"] = $transaction["c.symbolic_name"];
+            $transaction["type"] = match ($transaction["type"]) {0 => "payment", 1 => "deposit"};
+            $transaction["created_at"] = $transaction["created_at"]->format('c');
+            if ("deposit" === $transaction["type"]){
+                unset($transaction["course_code"]);
             }
-            $normalized["amount"] = $transaction["t.value"];
-            return $normalized;
+            return $transaction;
         }, $transactions));
+    }
+
+    #[Route('/deposit', name: 'api_v1_deposit', methods: ['POST'])]
+    #[IsGranted("ROLE_USER")]
+    public function deposit(
+        #[CurrentUser] $user,
+        Request $request,
+        PaymentService $paymentService,
+    ): Response {
+        try {
+            $data = json_decode($request->getContent(), true);
+            if (!isset($data["deposit"]) || $data["deposit"] <= 0) {
+                return new Response("Неверная сумма пополнения", Response::HTTP_BAD_REQUEST);
+            }
+        } catch (Exception $exception) {
+            return new Response("",Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $paymentService->deposit($user, (float) $data["deposit"]);
+            return new Response("Success", Response::HTTP_OK);
+        } catch (Exception $exception) {
+            return new Response($this->json(["error" => "Сервис временно недоступен"]),Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }
