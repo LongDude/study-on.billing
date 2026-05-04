@@ -17,6 +17,21 @@ class TransactionRepository extends ServiceEntityRepository
         parent::__construct($registry, Transaction::class);
     }
 
+    public function listActiveCourses(?User $user): array
+    {
+        return $this->createQueryBuilder('t')
+            ->select(
+                'c.symbolic_name as code',
+                't.validUntil as valid_until',
+            )
+            ->where('t.BillingUser = :user')->setParameter('user', $user)
+            ->andWhere('t.operationType = :type')->setParameter('type', 0)
+            ->andWhere('t.validUntil is null or t.validUntil > :timenow')->setParameter('timenow', new \DateTime())
+            ->leftJoin('t.Course', 'c')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function listFiltered(?User $user, ?string $type, ?string $courseCode, ?bool $skipExpired): array
     {
         $transactionQuery = $this->createQueryBuilder('t')
@@ -51,29 +66,4 @@ class TransactionRepository extends ServiceEntityRepository
         }
         return $transactionQuery->getQuery()->getResult();
     }
-
-    //    /**
-    //     * @return Transaction[] Returns an array of Transaction objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('t')
-    //            ->andWhere('t.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('t.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
-
-    //    public function findOneBySomeField($value): ?Transaction
-    //    {
-    //        return $this->createQueryBuilder('t')
-    //            ->andWhere('t.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
 }

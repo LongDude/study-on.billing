@@ -4,6 +4,7 @@ namespace App\Controller\Api\v1;
 
 use App\Entity\Course;
 use App\Repository\CourseRepository;
+use App\Repository\TransactionRepository;
 use App\Service\PaymentService;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManager;
@@ -16,6 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use function PHPUnit\Framework\isNull;
 
 #[Route('/api/v1/courses')]
 final class CoursesController extends AbstractController
@@ -40,6 +42,32 @@ final class CoursesController extends AbstractController
         }
 
         return $this->json($resp);
+    }
+
+    #[Route('/active', name: 'api_v1_courses_active', methods: ['GET'])]
+    #[IsGranted("ROLE_USER")]
+    public function listActiveCourses(
+        #[CurrentUser] $user,
+        TransactionRepository $transactionRepository
+    ): JsonResponse {
+        try {
+            $resp = [];
+            $activeCourses = $transactionRepository->listActiveCourses($user);
+            foreach ($activeCourses as $course) {
+                if (is_null($course['valid_until'])) {
+                    unset($course['valid_until']);
+                } else {
+                    $course['valid_until'] = $course['valid_until']->format('c');
+                }
+                $resp[] = $course;
+            }
+            return $this->json($resp);
+        } catch (Exception $exception) {
+            return $this->json([
+                'message' => "Сервис временно недоступен"
+            ],
+                status: Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     #[Route('/{symbolic_name:course}', name: 'api_v1_course_show', methods: ['GET'])]
