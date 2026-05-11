@@ -2,7 +2,6 @@
 
 namespace App\Controller\Api\v1;
 
-use App\Entity\Course;
 use App\Repository\CourseRepository;
 use App\Repository\TransactionRepository;
 use App\Service\PaymentService;
@@ -131,7 +130,7 @@ final class CoursesController extends AbstractController
         }
     }
 
-    #[Route('/{symbolic_name:course}', name: 'api_v1_course_show', methods: ['GET'])]
+    #[Route('/{symbolic_name}', name: 'api_v1_course_show', methods: ['GET'])]
     #[OA\Get(
         path: '/api/v1/courses/{symbolic_name}',
         description: 'Returns information about one course by its symbolic code.',
@@ -164,10 +163,23 @@ final class CoursesController extends AbstractController
             new OA\Response(
                 response: 404,
                 description: 'Course not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Курс не найден'),
+                    ],
+                    type: 'object',
+                ),
             ),
         ],
     )]
-    public function show(Course $course): JsonResponse {
+    public function show(string $symbolic_name, CourseRepository $courseRepository): JsonResponse {
+        $course = $courseRepository->findOneBy(['symbolic_name' => $symbolic_name]);
+        if (null === $course) {
+            return $this->json([
+                'message' => 'Курс не найден',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
         $resp = [];
         $resp['code'] = $course->getSymbolicName();
         $resp['type'] = match ($course->getCourseType()) {
@@ -181,7 +193,7 @@ final class CoursesController extends AbstractController
         return $this->json($resp);
     }
 
-    #[Route('/{symbolic_name:course}/pay', name: 'api_v1_course_pay', methods: ['POST'])]
+    #[Route('/{symbolic_name}/pay', name: 'api_v1_course_pay', methods: ['POST'])]
     #[IsGranted("ROLE_USER")]
     #[OA\Post(
         path: '/api/v1/courses/{symbolic_name}/pay',
@@ -223,6 +235,12 @@ final class CoursesController extends AbstractController
             new OA\Response(
                 response: 404,
                 description: 'Course not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Курс не найден'),
+                    ],
+                    type: 'object',
+                ),
             ),
             new OA\Response(
                 response: 406,
@@ -249,9 +267,17 @@ final class CoursesController extends AbstractController
     )]
     public function pay(
         #[CurrentUser] $user,
-        Course $course,
+        string $symbolic_name,
+        CourseRepository $courseRepository,
         PaymentService $paymentService
     ): JsonResponse {
+        $course = $courseRepository->findOneBy(['symbolic_name' => $symbolic_name]);
+        if (null === $course) {
+            return $this->json([
+                'message' => 'Курс не найден',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
         try {
             $trans = $paymentService->payment($user, $course);
             if (null === $trans) {
