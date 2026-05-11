@@ -7,22 +7,42 @@ use App\Repository\CourseRepository;
 use App\Repository\TransactionRepository;
 use App\Service\PaymentService;
 use Doctrine\DBAL\Exception;
-use Doctrine\ORM\EntityManager;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\DependencyInjection\Compiler\ResolveNamedArgumentsPass;
-use Symfony\Component\HttpFoundation\Request;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use function PHPUnit\Framework\isNull;
 
 #[Route('/api/v1/courses')]
 final class CoursesController extends AbstractController
 {
     #[Route('', name: 'api_v1_courses', methods: ['GET'])]
+    #[OA\Get(
+        path: '/api/v1/courses',
+        description: 'Returns all available courses with their purchase type and price for paid courses.',
+        summary: 'List courses',
+        security: [],
+        tags: ['Courses'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Courses list',
+                content: new OA\JsonContent(
+                    type: 'array',
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: 'code', description: 'Course symbolic code', type: 'string', example: 'sql-database-design'),
+                            new OA\Property(property: 'type', description: 'Course access type', type: 'string', enum: ['free', 'rent', 'buy'], example: 'buy'),
+                            new OA\Property(property: 'price', description: 'Course price. Returned only for rent and buy courses.', type: 'number', format: 'float', example: 5000),
+                        ],
+                        type: 'object',
+                    ),
+                ),
+            ),
+        ],
+    )]
     public function index(CourseRepository $courseRepository): JsonResponse
     {
         $courses = $courseRepository->findAll();
@@ -46,6 +66,47 @@ final class CoursesController extends AbstractController
 
     #[Route('/active', name: 'api_v1_courses_active', methods: ['GET'])]
     #[IsGranted("ROLE_USER")]
+    #[OA\Get(
+        path: '/api/v1/courses/active',
+        description: 'Returns active paid courses for the current user. Permanent access courses do not contain valid_until.',
+        summary: 'List active courses',
+        security: [['Bearer' => []]],
+        tags: ['Courses'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Active courses list',
+                content: new OA\JsonContent(
+                    type: 'array',
+                    items: new OA\Items(
+                        properties: [
+                            new OA\Property(property: 'code', description: 'Course symbolic code', type: 'string', example: 'sql-database-design'),
+                            new OA\Property(property: 'valid_until', description: 'ISO 8601 access expiration date for rented courses', type: 'string', format: 'date-time', example: '2026-05-12T15:30:00+03:00'),
+                        ],
+                        type: 'object',
+                    ),
+                ),
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Unauthorized',
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'Forbidden',
+            ),
+            new OA\Response(
+                response: 500,
+                description: 'Service temporarily unavailable',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Сервис временно недоступен'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+        ],
+    )]
     public function listActiveCourses(
         #[CurrentUser] $user,
         TransactionRepository $transactionRepository
@@ -71,6 +132,41 @@ final class CoursesController extends AbstractController
     }
 
     #[Route('/{symbolic_name:course}', name: 'api_v1_course_show', methods: ['GET'])]
+    #[OA\Get(
+        path: '/api/v1/courses/{symbolic_name}',
+        description: 'Returns information about one course by its symbolic code.',
+        summary: 'Get course',
+        security: [],
+        tags: ['Courses'],
+        parameters: [
+            new OA\Parameter(
+                name: 'symbolic_name',
+                description: 'Course symbolic code',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'string'),
+                example: 'sql-database-design',
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Course information',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'code', description: 'Course symbolic code', type: 'string', example: 'sql-database-design'),
+                        new OA\Property(property: 'type', description: 'Course access type', type: 'string', enum: ['free', 'rent', 'buy'], example: 'buy'),
+                        new OA\Property(property: 'price', description: 'Course price. Returned only for rent and buy courses.', type: 'number', format: 'float', example: 5000),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Course not found',
+            ),
+        ],
+    )]
     public function show(Course $course): JsonResponse {
         $resp = [];
         $resp['code'] = $course->getSymbolicName();
@@ -87,6 +183,70 @@ final class CoursesController extends AbstractController
 
     #[Route('/{symbolic_name:course}/pay', name: 'api_v1_course_pay', methods: ['POST'])]
     #[IsGranted("ROLE_USER")]
+    #[OA\Post(
+        path: '/api/v1/courses/{symbolic_name}/pay',
+        description: 'Pays for course access using the current user balance.',
+        summary: 'Pay for course',
+        security: [['Bearer' => []]],
+        tags: ['Courses'],
+        parameters: [
+            new OA\Parameter(
+                name: 'symbolic_name',
+                description: 'Course symbolic code',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'string'),
+                example: 'sql-database-design',
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Course successfully paid',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean', example: true),
+                        new OA\Property(property: 'course_type', description: 'Paid course access type', type: 'string', enum: ['free', 'rent', 'buy'], example: 'rent'),
+                        new OA\Property(property: 'expires_at', description: 'ISO 8601 access expiration date for rented courses', type: 'string', format: 'date-time', example: '2026-05-12T15:30:00+03:00'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Unauthorized',
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'Forbidden',
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Course not found',
+            ),
+            new OA\Response(
+                response: 406,
+                description: 'Insufficient funds',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'code', type: 'integer', example: 406),
+                        new OA\Property(property: 'message', type: 'string', example: 'На вашем счету недостаточно средств'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(
+                response: 500,
+                description: 'Service temporarily unavailable',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Сервис временно недоступен'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+        ],
+    )]
     public function pay(
         #[CurrentUser] $user,
         Course $course,
