@@ -64,6 +64,7 @@ class TransactionRepository extends ServiceEntityRepository
         if ($skipExpired) {
             $transactionQuery->andWhere('t.validUntil is null or t.validUntil > :timenow')->setParameter('timenow', new \DateTime());
         }
+        $transactionQuery->orderBy('t.transactionTime', 'DESC');
         return $transactionQuery->getQuery()->getResult();
     }
 }
