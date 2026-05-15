@@ -2,17 +2,26 @@
 
 namespace App\Controller\Api\v1;
 
+use App\DTO\CoursePostDTO;
+use App\Entity\Course;
 use App\Repository\CourseRepository;
 use App\Repository\TransactionRepository;
 use App\Service\PaymentService;
 use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Exception\ORMException;
+use JMS\Serializer\Serializer;
+use JMS\Serializer\SerializerBuilder;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/v1/courses')]
 final class CoursesController extends AbstractController
@@ -308,5 +317,113 @@ final class CoursesController extends AbstractController
                 status: Response::HTTP_INTERNAL_SERVER_ERROR,
             );
         }
+    }
+
+    #[Route("", name: "api_courses_create", methods: ["POST"])]
+    #[IsGranted("ROLE_SUPER_ADMIN")]
+    public function create(
+        Request $request,
+        ValidatorInterface $validator,
+        CourseRepository $courseRepository,
+        Serializer  $serializer,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $courseDto = $serializer->deserialize($request->getContent(), CoursePostDTO::class, 'json');
+        $errors = $validator->validate($courseDto);
+
+        if ($errors->count() > 0) {
+            $errs = array();
+            foreach ($errors as $brokenConstraint) {
+                $errs[$brokenConstraint->getPropertyPath()] = $brokenConstraint->getMessage();
+            }
+            return $this->json(["errors" => $errs], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $course = new Course()
+                ->setTitle($courseDto->title)
+                ->setSymbolicName($courseDto->code)
+                ->setPrice($courseDto->price);
+
+            switch ($courseDto->type) {
+                case "free":
+                    $course->setCourseType(0);
+                    break;
+                case "rent":
+                    $course->setCourseType(1);
+                    break;
+                case "buy":
+                    $course->setCourseType(2);
+                    break;
+            }
+
+            $entityManager->persist($course);
+            $entityManager->flush();
+        } catch (UniqueConstraintViolationException $exception) {
+                return $this->json(["errors" => [
+                    "symbolic_name" => "Course with same code already exists",
+                ]],                Response::HTTP_BAD_REQUEST);
+        } catch (ORMException) {
+            return $this->json(["errors" => ["message" => "Server error"]], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return $this->json(["success" => true], Response::HTTP_CREATED);
+    }
+
+    #[Route("/{code}", name: "api_courses_create", methods: ["POST"])]
+    #[IsGranted("ROLE_SUPER_ADMIN")]
+    public function update(
+        Request $request,
+        ValidatorInterface $validator,
+        CourseRepository $courseRepository,
+        EntityManagerInterface $entityManager,
+        Serializer  $serializer,
+        string $code,
+    ): JsonResponse {
+        $courseDto = $serializer->deserialize($request->getContent(), CoursePostDTO::class, 'json');
+        $errors = $validator->validate($courseDto);
+
+        if ($errors->count() > 0) {
+            $errs = array();
+            foreach ($errors as $brokenConstraint) {
+                $errs[$brokenConstraint->getPropertyPath()] = $brokenConstraint->getMessage();
+            }
+            return $this->json(["errors" => $errs], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $course = $courseRepository->findOneBy(['symbolic_name' => $code]);
+            if (null === $course) {
+                return $this->json(["errors" => ["course" => "course not found"]], Response::HTTP_NOT_FOUND);
+            }
+
+            $course
+                ->setTitle($courseDto->title)
+                ->setSymbolicName($courseDto->code)
+                ->setPrice($courseDto->price);
+
+            switch ($courseDto->type) {
+                case "free":
+                    $course->setCourseType(0);
+                    break;
+                case "rent":
+                    $course->setCourseType(1);
+                    break;
+                case "buy":
+                    $course->setCourseType(2);
+                    break;
+            }
+
+            $entityManager->persist($course);
+            $entityManager->flush();
+        } catch (UniqueConstraintViolationException $exception) {
+            return $this->json(["errors" => [
+                "symbolic_name" => "Course with same code already exists",
+            ]],                Response::HTTP_BAD_REQUEST);
+        } catch (ORMException) {
+            return $this->json(["errors" => ["message" => "Server error"]], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return $this->json(["success" => true], Response::HTTP_OK);
     }
 }
