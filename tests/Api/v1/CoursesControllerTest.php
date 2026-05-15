@@ -41,10 +41,12 @@ final class CoursesControllerTest extends WebTestCase
         self::assertCount(5, $data);
         self::assertContains([
             "code" => "web-development-basics",
+            "title" => "Основы веб-разработки",
             "type" => "free",
         ], $data);
         self::assertContains([
             "code" => "sql-database-design",
+            "title" => "Проектирование и оптимизация SQL баз данных",
             "type" => "buy",
             "price" => 5000,
         ], $data);
@@ -57,6 +59,7 @@ final class CoursesControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([
             'code' => 'symfony-framework-mastery',
+            'title' => 'Symfony: от новичка до профи',
             'type' => 'rent',
             'price' => 199.99,
         ], $this->getJsonResponse());
@@ -151,6 +154,70 @@ final class CoursesControllerTest extends WebTestCase
         self::assertSame(['message' => 'Курс не найден'], $this->getJsonResponse());
     }
 
+    public function testCreateRequiresSuperAdmin(): void
+    {
+        $this->authorizeClient();
+
+        $this->client->jsonRequest('POST', '/api/v1/courses', $this->coursePayload());
+
+        self::assertResponseStatusCodeSame(403);
+    }
+
+    public function testCreateCourseWithTitle(): void
+    {
+        $this->authorizeClient('admin@email.index', 'user_admin_password');
+
+        $this->client->jsonRequest('POST', '/api/v1/courses', $this->coursePayload());
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame(['success' => true], $this->getJsonResponse());
+
+        $this->client->request('GET', '/api/v1/courses/php-api-design');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            'code' => 'php-api-design',
+            'title' => 'Проектирование API на PHP',
+            'type' => 'rent',
+            'price' => 399.5,
+        ], $this->getJsonResponse());
+    }
+
+    public function testUpdateCourseWithTitle(): void
+    {
+        $this->authorizeClient('admin@email.index', 'user_admin_password');
+
+        $this->client->jsonRequest('POST', '/api/v1/courses/web-development-basics', [
+            'code' => 'web-development-updated',
+            'title' => 'Современная веб-разработка',
+            'type' => 'buy',
+            'price' => 1500,
+        ]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['success' => true], $this->getJsonResponse());
+
+        $this->client->request('GET', '/api/v1/courses/web-development-updated');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            'code' => 'web-development-updated',
+            'title' => 'Современная веб-разработка',
+            'type' => 'buy',
+            'price' => 1500,
+        ], $this->getJsonResponse());
+    }
+
+    public function testUpdateReturnsNotFoundForUnknownCourse(): void
+    {
+        $this->authorizeClient('admin@email.index', 'user_admin_password');
+
+        $this->client->jsonRequest('POST', '/api/v1/courses/unknown-course', $this->coursePayload());
+
+        self::assertResponseStatusCodeSame(404);
+        self::assertSame(['errors' => ['course' => 'course not found']], $this->getJsonResponse());
+    }
+
     private function getJsonResponse(): array
     {
         return json_decode($this->client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -173,5 +240,15 @@ final class CoursesControllerTest extends WebTestCase
         }
 
         self::fail(sprintf('Course "%s" was not found in response.', $code));
+    }
+
+    private function coursePayload(): array
+    {
+        return [
+            'code' => 'php-api-design',
+            'title' => 'Проектирование API на PHP',
+            'type' => 'rent',
+            'price' => 399.5,
+        ];
     }
 }

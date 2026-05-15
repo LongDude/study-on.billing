@@ -12,15 +12,17 @@ final class CoursePostDTO
         new Assert\EqualTo('rent'),
         new Assert\EqualTo('buy'),
     ])]
-    private string $type;
+    public string $type;
 
+    #[Assert\NotBlank]
     #[Assert\Length(min: 1, max: 255)]
-    private string $title;
+    public string $title;
 
+    #[Assert\NotBlank]
     #[Assert\Length(min: 1, max: 255)]
-    private string $code;
+    public string $code;
 
     #[Assert\NotBlank]
     #[Assert\PositiveOrZero]
-    private float $price;
+    public float $price;
 }
