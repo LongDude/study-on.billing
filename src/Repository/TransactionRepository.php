@@ -17,9 +17,9 @@ class TransactionRepository extends ServiceEntityRepository
         parent::__construct($registry, Transaction::class);
     }
 
-    public function listActiveCourses(?User $user): array
+    public function listActiveCourses(?User $user, ?string $symbolicCode = null): array
     {
-        return $this->createQueryBuilder('t')
+        $q = $this->createQueryBuilder('t')
             ->select(
                 'c.symbolic_name as code',
                 't.validUntil as valid_until',
@@ -27,9 +27,11 @@ class TransactionRepository extends ServiceEntityRepository
             ->where('t.BillingUser = :user')->setParameter('user', $user)
             ->andWhere('t.operationType = :type')->setParameter('type', 0)
             ->andWhere('t.validUntil is null or t.validUntil > :timenow')->setParameter('timenow', new \DateTime())
-            ->leftJoin('t.Course', 'c')
-            ->getQuery()
-            ->getResult();
+            ->leftJoin('t.Course', 'c');
+        if ($symbolicCode) {
+            $q = $q->andWhere('c.symbolic_name = :code')->setParameter('code', $symbolicCode);
+        }
+        return $q->getQuery()->getResult();
     }
 
     public function listFiltered(?User $user, ?string $type, ?string $courseCode, ?bool $skipExpired): array

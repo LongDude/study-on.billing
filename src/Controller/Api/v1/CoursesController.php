@@ -115,13 +115,17 @@ final class CoursesController extends AbstractController
             ),
         ],
     )]
-    public function listActiveCourses(
+    public function checkActiveCourses(
         #[CurrentUser] $user,
-        TransactionRepository $transactionRepository
+        Request $request,
+        TransactionRepository $transactionRepository,
+        CourseRepository $courseRepository,
     ): JsonResponse {
+        $targetCode=$request->query->get('code');
+
         try {
             $resp = [];
-            $activeCourses = $transactionRepository->listActiveCourses($user);
+            $activeCourses = $transactionRepository->listActiveCourses($user, $targetCode);
             foreach ($activeCourses as $course) {
                 if (is_null($course['valid_until'])) {
                     unset($course['valid_until']);
