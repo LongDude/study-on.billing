@@ -11,8 +11,7 @@ use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
-use JMS\Serializer\Serializer;
-use JMS\Serializer\SerializerBuilder;
+use JMS\Serializer\SerializerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -42,6 +41,7 @@ final class CoursesController extends AbstractController
                     items: new OA\Items(
                         properties: [
                             new OA\Property(property: 'code', description: 'Course symbolic code', type: 'string', example: 'sql-database-design'),
+                            new OA\Property(property: 'title', description: 'Course title', type: 'string', example: 'Проектирование и оптимизация SQL баз данных'),
                             new OA\Property(property: 'type', description: 'Course access type', type: 'string', enum: ['free', 'rent', 'buy'], example: 'buy'),
                             new OA\Property(property: 'price', description: 'Course price. Returned only for rent and buy courses.', type: 'number', format: 'float', example: 5000),
                         ],
@@ -58,6 +58,7 @@ final class CoursesController extends AbstractController
         foreach ($courses as $course) {
             $new_row = [];
             $new_row['code'] = $course->getSymbolicName();
+            $new_row['title'] = $course->getTitle();
             $new_row['type'] = match ($course->getCourseType()) {
                 0 => "free",
                 1 => "rent",
@@ -167,6 +168,7 @@ final class CoursesController extends AbstractController
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: 'code', description: 'Course symbolic code', type: 'string', example: 'sql-database-design'),
+                        new OA\Property(property: 'title', description: 'Course title', type: 'string', example: 'Проектирование и оптимизация SQL баз данных'),
                         new OA\Property(property: 'type', description: 'Course access type', type: 'string', enum: ['free', 'rent', 'buy'], example: 'buy'),
                         new OA\Property(property: 'price', description: 'Course price. Returned only for rent and buy courses.', type: 'number', format: 'float', example: 5000),
                     ],
@@ -195,6 +197,7 @@ final class CoursesController extends AbstractController
 
         $resp = [];
         $resp['code'] = $course->getSymbolicName();
+        $resp['title'] = $course->getTitle();
         $resp['type'] = match ($course->getCourseType()) {
             0 => "free",
             1 => "rent",
@@ -325,11 +328,65 @@ final class CoursesController extends AbstractController
 
     #[Route("", name: "api_courses_create", methods: ["POST"])]
     #[IsGranted("ROLE_SUPER_ADMIN")]
+    #[OA\Post(
+        path: '/api/v1/courses',
+        description: 'Creates a course.',
+        summary: 'Create course',
+        security: [['Bearer' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['type', 'title', 'code', 'price'],
+                properties: [
+                    new OA\Property(property: 'type', description: 'Course access type', type: 'string', enum: ['free', 'rent', 'buy'], example: 'rent'),
+                    new OA\Property(property: 'title', description: 'Course title', type: 'string', example: 'Symfony: от новичка до профи'),
+                    new OA\Property(property: 'code', description: 'Course symbolic code', type: 'string', example: 'symfony-framework-mastery'),
+                    new OA\Property(property: 'price', description: 'Course price', type: 'number', format: 'float', example: 199.99),
+                ],
+                type: 'object',
+            ),
+        ),
+        tags: ['Courses'],
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Course created',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean', example: true),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Validation error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(response: 401, description: 'Unauthorized'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(
+                response: 500,
+                description: 'Server error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+        ],
+    )]
     public function create(
         Request $request,
         ValidatorInterface $validator,
         CourseRepository $courseRepository,
-        Serializer  $serializer,
+        SerializerInterface  $serializer,
         EntityManagerInterface $entityManager,
     ): JsonResponse {
         $courseDto = $serializer->deserialize($request->getContent(), CoursePostDTO::class, 'json');
@@ -374,15 +431,89 @@ final class CoursesController extends AbstractController
         return $this->json(["success" => true], Response::HTTP_CREATED);
     }
 
-    #[Route("/{code}", name: "api_courses_create", methods: ["POST"])]
+    #[Route("/{symbolic_name}", name: "api_courses_update", methods: ["POST"])]
     #[IsGranted("ROLE_SUPER_ADMIN")]
+    #[OA\Post(
+        path: '/api/v1/courses/{symbolic_name}',
+        description: 'Updates a course.',
+        summary: 'Update course',
+        security: [['Bearer' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['type', 'title', 'code', 'price'],
+                properties: [
+                    new OA\Property(property: 'type', description: 'Course access type', type: 'string', enum: ['free', 'rent', 'buy'], example: 'buy'),
+                    new OA\Property(property: 'title', description: 'Course title', type: 'string', example: 'Проектирование и оптимизация SQL баз данных'),
+                    new OA\Property(property: 'code', description: 'New course symbolic code', type: 'string', example: 'sql-database-design'),
+                    new OA\Property(property: 'price', description: 'Course price', type: 'number', format: 'float', example: 5000),
+                ],
+                type: 'object',
+            ),
+        ),
+        tags: ['Courses'],
+        parameters: [
+            new OA\Parameter(
+                name: 'symbolic_name',
+                description: 'Current course symbolic code',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'string'),
+                example: 'sql-database-design',
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Course updated',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean', example: true),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Validation error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(response: 401, description: 'Unauthorized'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(
+                response: 404,
+                description: 'Course not found',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(
+                response: 500,
+                description: 'Server error',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ],
+                    type: 'object',
+                ),
+            ),
+        ],
+    )]
     public function update(
         Request $request,
         ValidatorInterface $validator,
         CourseRepository $courseRepository,
         EntityManagerInterface $entityManager,
-        Serializer  $serializer,
-        string $code,
+        SerializerInterface  $serializer,
+        string $symbolic_name,
     ): JsonResponse {
         $courseDto = $serializer->deserialize($request->getContent(), CoursePostDTO::class, 'json');
         $errors = $validator->validate($courseDto);
@@ -396,7 +527,7 @@ final class CoursesController extends AbstractController
         }
 
         try {
-            $course = $courseRepository->findOneBy(['symbolic_name' => $code]);
+            $course = $courseRepository->findOneBy(['symbolic_name' => $symbolic_name]);
             if (null === $course) {
                 return $this->json(["errors" => ["course" => "course not found"]], Response::HTTP_NOT_FOUND);
             }
