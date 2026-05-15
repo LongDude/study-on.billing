@@ -54,6 +54,13 @@ class Course
     )]
     private ?float $price = null;
 
+    #[ORM\Column(
+        nullable: false,
+    )]
+    #[Assert\NotNull]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
+    private ?string $title = null;
     /**
      * @var Collection<int, Transaction>
      */
@@ -133,6 +140,17 @@ class Course
             }
         }
 
+        return $this;
+    }
+
+    public function getTitle(): ?string
+    {
+        return $this->title;
+    }
+
+    public function setTitle(?string $title): static
+    {
+        $this->title = $title;
         return $this;
     }
 }
