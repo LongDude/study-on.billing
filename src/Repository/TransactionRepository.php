@@ -17,6 +17,48 @@ class TransactionRepository extends ServiceEntityRepository
         parent::__construct($registry, Transaction::class);
     }
 
+    public function findEndingRentals(\DateTimeInterface $from, \DateTimeInterface $to): array
+    {
+        return $this->createQueryBuilder('t')
+            ->select(
+                'u.email as email',
+                'c.title as course_name',
+                't.validUntil as valid_until'
+            )
+            ->innerJoin('t.BillingUser', 'u')
+            ->innerJoin('t.Course', 'c')
+            ->andWhere('t.operationType = :operationType')->setParameter('operationType', 0)
+            ->andWhere('c.course_type = :courseType')->setParameter('courseType', 1)
+            ->andWhere('t.validUntil >= :from')->setParameter('from', $from)
+            ->andWhere('t.validUntil < :to')->setParameter('to', $to)
+            ->orderBy('u.email', 'ASC')
+            ->addOrderBy('t.validUntil', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function getPaidCoursesReport(\DateTimeInterface $from, \DateTimeInterface $to): array
+    {
+        return $this->createQueryBuilder('t')
+            ->select(
+                'c.title as course_name',
+                'c.course_type as course_type',
+                'COUNT(t.id) as payments_count',
+                'SUM(t.value) as total_sum'
+            )
+            ->innerJoin('t.Course', 'c')
+            ->andWhere('t.operationType = :operationType')->setParameter('operationType', 0)
+            ->andWhere('c.course_type IN (:courseTypes)')->setParameter('courseTypes', [1, 2])
+            ->andWhere('t.transactionTime >= :from')->setParameter('from', $from)
+            ->andWhere('t.transactionTime < :to')->setParameter('to', $to)
+            ->groupBy('c.id')
+            ->addGroupBy('c.title')
+            ->addGroupBy('c.course_type')
+            ->orderBy('c.title', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function listActiveCourses(?User $user, ?string $symbolicCode = null): array
     {
         $q = $this->createQueryBuilder('t')

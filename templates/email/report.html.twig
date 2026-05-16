@@ -1,0 +1,33 @@
+{% extends 'email.html.twig' %}
+
+{% block title %}Отчет об оплаченных курсах{% endblock %}
+
+{% block body %}
+    <p style="margin: 0 0 12px;">
+        Отчет об оплаченных курсах за период {{ period_start|date('d.m.Y') }} - {{ period_end|date('d.m.Y') }}
+    </p>
+    <table cellspacing="0" cellpadding="8" style="border-collapse: collapse; width: 100%;">
+        <thead>
+        <tr>
+            <th style="border: 1px solid #cccccc; text-align: left;">Название курса</th>
+            <th style="border: 1px solid #cccccc; text-align: left;">Тип курса</th>
+            <th style="border: 1px solid #cccccc; text-align: left;">Число аренд/покупок</th>
+            <th style="border: 1px solid #cccccc; text-align: left;">Общая сумма</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td style="border: 1px solid #cccccc;">{{ row.course_name }}</td>
+                <td style="border: 1px solid #cccccc;">{{ row.course_type }}</td>
+                <td style="border: 1px solid #cccccc;">{{ row.payments_count }}</td>
+                <td style="border: 1px solid #cccccc;">{{ row.total_sum|number_format(2, '.', ' ') }}</td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="4" style="border: 1px solid #cccccc;">Нет оплаченных курсов за период</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

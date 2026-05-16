@@ -1,0 +1,10 @@
+{% extends 'email.html.twig' %}
+
+{% block title %}Срок аренды курсов подходит к концу{% endblock %}
+
+{% block body %}
+    <p style="margin: 0 0 12px;">Уважаемый клиент! У вас есть курсы, срок аренды которых подхоит к концу:</p>
+    {% for rental in rentals %}
+        <p style="margin: 0;">{{ rental.course_name }} действует до {{ rental.valid_until|date('d.m.Y H:i') }}</p>
+    {% endfor %}
+{% endblock %}

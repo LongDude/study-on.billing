@@ -11,6 +11,8 @@ parameters:
     app.refresh_token_ttl: 2592000
     app.initial_payment: 3000
     app.rent_length: 7 # days
+    app.payment_report_email: 'admin@email.index'
+    app.payment_from_email: 'no-reply@study-on.local'
 
 services:
     # default configuration for services in *this* file

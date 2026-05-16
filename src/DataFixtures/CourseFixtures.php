@@ -178,9 +178,9 @@ class CourseFixtures extends Fixture implements DependentFixtureInterface
                 ->setBillingUser($user2)
                 ->setCourse($course3)
                 ->setOperationType(0)
-                ->settransactionTime(new \DateTime()->modify('-15 day'))
+                ->settransactionTime(new \DateTime()->modify('-6 day'))
                 ->setValue($course3->getPrice())
-                ->setValidUntil(new \DateTime()->modify('+15 day'))
+                ->setValidUntil(new \DateTime()->modify('+1 day'))
         );
         $manager->flush();
     }
