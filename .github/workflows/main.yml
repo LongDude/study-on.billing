@@ -45,11 +45,11 @@ jobs:
                   docker compose --env-file .env --env-file .env.local up -d
                   docker compose --env-file .env --env-file .env.local exec -T postgres sh -c 'until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 1; done'
                   docker compose --env-file .env --env-file .env.local exec -T -u root php bin/console make:migration
-                  docker compose --env-file .env --env-file .env.local exec -T -u root php bin/console doctrine:migrations:migrate -n
+                  docker compose --env-file .env --env-file .env.local exec -T php bin/console doctrine:migrations:migrate -n
                   docker ps -a
             - name: Setting JWT
               run: |
-                  docker compose --env-file .env --env-file .env.local exec php bin/console lexik:jwt:generate-keypair
+                  docker compose --env-file .env --env-file .env.local exec -u root php bin/console lexik:jwt:generate-keypair
             - name: Setting test environment and DB
               run: |
                   echo "DATABASE_URL=pgsql://${{ secrets.DB_TEST_USER }}:${{ secrets.DB_TEST_PASSWORD }}@postgres:5432/${{secrets.DB_TEST_DBNAME}}" >> .env.test.local
