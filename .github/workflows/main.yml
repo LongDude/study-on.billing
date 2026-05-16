@@ -1,0 +1,64 @@
+name: CI
+on:
+    push:
+        branches: [ "master" ]
+    workflow_dispatch:
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        environment: deploy_env
+        #   ubuntu-latest должна работать стабильно, можно указать явно другую версию
+        #   steps можно сильнее разбить на категории и поправить
+        #   steps можно сильнее разбить на категории и поправить
+        #   тут представлен пример только для запуска тестов. Можно еще проверять код-стайл и mailer
+        #   часто встречается на рабочих проектах
+        steps:
+            - uses: actions/checkout@v4
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.4.5'
+                  extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+                  coverage: pcov
+                  tools: composer
+            - name: Setting environment and composer
+                #        тут тоже что-то можно изменить :)
+              run: |
+                  git config --global --add safe.directory /app
+                  cat << EOF > .env.local
+                  POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+                  POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+                  POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+                  DATABASE_URL="pgsql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.POSTGRES_DB }}"
+                  JWT_SECRET_KEY="%kernel.project_dir%/config/jwt/private.pem"
+                  JWT_PUBLIC_KEY="%kernel.project_dir%/config/jwt/public.pem"
+                  JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+                  EOF
+                  cat .env.local
+                  composer install
+            - name: Setting Docker
+              run: |
+                  sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                  sudo chmod +x /usr/local/bin/docker-compose
+                  docker compose --version
+                  docker compose --env-file .env --env-file .env.local build
+                  docker compose --env-file .env --env-file .env.local up -d
+                  docker compose --env-file .env --env-file .env.local exec -T postgres sh -c 'until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 1; done'
+                  docker compose --env-file .env --env-file .env.local exec -T -u root php bin/console make:migration
+                  docker compose --env-file .env --env-file .env.local exec -T php bin/console doctrine:migrations:migrate -n
+                  docker ps -a
+            - name: Setting JWT
+              run: |
+                  docker compose --env-file .env --env-file .env.local exec php bin/console lexik:jwt:generate-keypair
+            - name: Setting test environment and DB
+              run: |
+                  echo "DATABASE_URL=pgsql://${{ secrets.DB_TEST_USER }}:${{ secrets.DB_TEST_PASSWORD }}@postgres:5432/${{secrets.DB_TEST_DBNAME}}" >> .env.test.local
+                  ls -la
+                  docker ps -a
+                  docker compose --env-file .env --env-file .env.local exec -T php bin/console doctrine:database:drop --force --env=test || true
+                  docker compose --env-file .env --env-file .env.local exec -T php bin/console doctrine:database:create --env=test
+                  docker compose --env-file .env --env-file .env.local exec -T php bin/console doctrine:migrations:migrate -n --env=test
+                  docker compose --env-file .env --env-file .env.local exec -T php bin/console doctrine:fixtures:load -n --env=test
+            - name: run PHPUnit
+              run: docker compose --env-file .env --env-file .env.local exec -T php sh -c 'APP_ENV=test bin/phpunit'
+
